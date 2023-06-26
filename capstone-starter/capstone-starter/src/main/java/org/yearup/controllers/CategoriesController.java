@@ -2,6 +2,8 @@ package org.yearup.controllers;
 
 import org.apache.commons.dbcp2.BasicDataSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.yearup.data.CategoryDao;
 import org.yearup.data.ProductDao;
@@ -10,6 +12,7 @@ import org.yearup.models.Product;
 
 import javax.sql.DataSource;
 import javax.xml.transform.Result;
+import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -98,15 +101,56 @@ public class CategoriesController {
     // https://localhost:8080/categories/1/products
     @GetMapping("{categoryId}/products")
     public List<Product> getProductsById(@PathVariable int categoryId) {
+        List<Product> productsByCategories = new ArrayList<>();
+        Product product = null;
         // get a list of product by categoryId
-        return null;
+        String query = "SELECT * FROM products WHERE category_id = ?";
+        try (Connection connection = dataSource.getConnection();
+            PreparedStatement preparedStatement = connection.prepareStatement(query)) {
+            preparedStatement.setInt(1, categoryId);
+
+            try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                if (resultSet.next()) {
+                    product = extractProductFromResultSet(resultSet);
+                    productsByCategories.add(product);
+                }
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+
+
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        } return productsByCategories;
+
     }
+
 
     // add annotation to call this method for a POST action
     // add annotation to ensure that only an ADMIN can call this function
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasRole('ROLE_ADMIN')")
     public Category addCategory(@RequestBody Category category) {
         // insert the category
-        return null;
+        String query = "INSERT INTO categories (name, description) VALUES (?,?) ";
+        try (Connection connection = dataSource.getConnection();
+      PreparedStatement preparedStatement = connection.prepareStatement(query, PreparedStatement.RETURN_GENERATED_KEYS)) {
+          preparedStatement.setString(1, category.getName());
+          preparedStatement.setString(2, category.getDescription());
+          preparedStatement.executeUpdate();
+
+          try (ResultSet generatedKeys = preparedStatement.getGeneratedKeys()) {
+              if (generatedKeys.next()){
+                  int generatedId = generatedKeys.getInt(1);
+                  category.setCategoryId(generatedId);
+              }
+          }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        } return category;
+
+
     }
 
     // add annotation to call this method for a PUT (update) action - the url path must include the categoryId
@@ -129,5 +173,19 @@ public class CategoriesController {
             String description = resultSet.getString("description");
             Category category = new Category(id, name, description);
             return category;
+    }
+    private Product extractProductFromResultSet(ResultSet resultSet) throws Exception {
+
+        int productId = resultSet.getInt("product_id");
+        String name = resultSet.getString("name");
+        BigDecimal price = resultSet.getBigDecimal("price");
+        int categoryId = resultSet.getInt("category_id");
+        String description = resultSet.getString("description");
+        String color = resultSet.getString("color");
+        int stock = resultSet.getInt("stock");
+        boolean isFeatured = resultSet.getBoolean("featured");
+        String imageUrl = resultSet.getString("image_url");
+        Product product = new Product(productId, name, price, categoryId, description, color, stock, isFeatured, imageUrl);
+        return product;
     }
 }
