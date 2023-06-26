@@ -47,25 +47,8 @@ public class CategoriesController {
     @GetMapping
     public List<Category> getAll() {
         // find and return all categories
-        List<Category> allCategories = new ArrayList<>();
+        List<Category> allCategories = categoryDao.getAllCategories();
 
-        String query = "SELECT * FROM categories";
-        try (Connection connection = dataSource.getConnection()) {
-            PreparedStatement preparedStatement = connection.prepareStatement(query);
-            ResultSet resultSet = preparedStatement.executeQuery();
-
-            while (resultSet.next()) {
-                int categoryid = resultSet.getInt("category_id");
-                String name = resultSet.getString("name");
-                String description = resultSet.getString("description");
-                Category category = new Category(categoryid, name, description);
-                allCategories.add(category);
-
-
-            }
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
         return allCategories;
     }
 
@@ -74,27 +57,8 @@ public class CategoriesController {
     @GetMapping("/{id}")
     public Category getById(@PathVariable int id) {
         Category category = null;
-
-
-        String query = "SELECT * FROM categories WHERE category_id = ?";
-        try (Connection connection = dataSource.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(query)) {
-
-            preparedStatement.setInt(1, id);
-
-            try (ResultSet resultSet = preparedStatement.executeQuery()) {
-                if (resultSet.next()) {
-                    category = extractCategoryFromResultSet(resultSet);
-                    return category;
-                }
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-            // get the category by id
-        } catch (SQLException ex) {
-            throw new RuntimeException(ex);
-        }
-        return null;
+        category = categoryDao.getById(id);
+        return category;
     }
 
     // the url to return all products in category 1 would look like this
@@ -102,26 +66,9 @@ public class CategoriesController {
     @GetMapping("{categoryId}/products")
     public List<Product> getProductsById(@PathVariable int categoryId) {
         List<Product> productsByCategories = new ArrayList<>();
-        Product product = null;
+         productsByCategories = productDao.listByCategoryId(categoryId);
         // get a list of product by categoryId
-        String query = "SELECT * FROM products WHERE category_id = ?";
-        try (Connection connection = dataSource.getConnection();
-            PreparedStatement preparedStatement = connection.prepareStatement(query)) {
-            preparedStatement.setInt(1, categoryId);
-
-            try (ResultSet resultSet = preparedStatement.executeQuery()) {
-                if (resultSet.next()) {
-                    product = extractProductFromResultSet(resultSet);
-                    productsByCategories.add(product);
-                }
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-
-
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        } return productsByCategories;
+        return productsByCategories;
 
     }
 
@@ -133,59 +80,28 @@ public class CategoriesController {
     @PreAuthorize("hasRole('ROLE_ADMIN')")
     public Category addCategory(@RequestBody Category category) {
         // insert the category
-        String query = "INSERT INTO categories (name, description) VALUES (?,?) ";
-        try (Connection connection = dataSource.getConnection();
-      PreparedStatement preparedStatement = connection.prepareStatement(query, PreparedStatement.RETURN_GENERATED_KEYS)) {
-          preparedStatement.setString(1, category.getName());
-          preparedStatement.setString(2, category.getDescription());
-          preparedStatement.executeUpdate();
-
-          try (ResultSet generatedKeys = preparedStatement.getGeneratedKeys()) {
-              if (generatedKeys.next()){
-                  int generatedId = generatedKeys.getInt(1);
-                  category.setCategoryId(generatedId);
-              }
-          }
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        } return category;
-
-
+        categoryDao.create(category);
+        return category;
     }
 
     // add annotation to call this method for a PUT (update) action - the url path must include the categoryId
     // add annotation to ensure that only an ADMIN can call this function
+    @PutMapping("/{id}")
+    @ResponseStatus(HttpStatus.OK)
+    @PreAuthorize("hasRole('ROLE_ADMIN')")
     public void updateCategory(@PathVariable int id, @RequestBody Category category) {
         // update the category by id
+        categoryDao.update(id, category);
     }
 
 
     // add annotation to call this method for a DELETE action - the url path must include the categoryId
     // add annotation to ensure that only an ADMIN can call this function
+    @DeleteMapping
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasRole('ROLE_ADMIN')")
     public void deleteCategory(@PathVariable int id) {
         // delete the category by id
-    }
-
-    private Category extractCategoryFromResultSet(ResultSet resultSet) throws Exception {
-
-            int id = resultSet.getInt("category_id");
-            String name = resultSet.getString("name");
-            String description = resultSet.getString("description");
-            Category category = new Category(id, name, description);
-            return category;
-    }
-    private Product extractProductFromResultSet(ResultSet resultSet) throws Exception {
-
-        int productId = resultSet.getInt("product_id");
-        String name = resultSet.getString("name");
-        BigDecimal price = resultSet.getBigDecimal("price");
-        int categoryId = resultSet.getInt("category_id");
-        String description = resultSet.getString("description");
-        String color = resultSet.getString("color");
-        int stock = resultSet.getInt("stock");
-        boolean isFeatured = resultSet.getBoolean("featured");
-        String imageUrl = resultSet.getString("image_url");
-        Product product = new Product(productId, name, price, categoryId, description, color, stock, isFeatured, imageUrl);
-        return product;
+        categoryDao.delete(id);
     }
 }
