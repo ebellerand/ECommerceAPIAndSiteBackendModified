@@ -1,10 +1,14 @@
 package org.yearup.controllers;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.server.ResponseStatusException;
 import org.yearup.data.ProductDao;
 import org.yearup.data.ShoppingCartDao;
 import org.yearup.data.UserDao;
+import org.yearup.data.mysql.MySqlUserDao;
+import org.yearup.models.Product;
 import org.yearup.models.ShoppingCart;
 import org.yearup.models.User;
 
@@ -43,7 +47,14 @@ public class ShoppingCartController
 
     // add a POST method to add a product to the cart - the url should be
     // https://localhost:8080/cart/products/15 (15 is the productId to be added
-
+    /*@PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public Product addProductToCart(int userId, int productId) {
+        MySqlUserDao mySqlUserDao = null;
+        User user = mySqlUserDao.getUserById(userId);
+        ShoppingCart shoppingCart = new
+*/
+    }
 
     // add a PUT method to update an existing product in the cart - the url should be
     // https://localhost:8080/cart/products/15 (15 is the productId to be updated)
@@ -53,4 +64,4 @@ public class ShoppingCartController
     // add a DELETE method to clear all products from the current users cart
     // https://localhost:8080/cart
 
-}
+
